@@ -1,0 +1,819 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>תקציב הטיול · דיסני ופריז</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;600;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#EEF1F6; --card:#FFFFFF; --ink:#17223B; --muted:#5B6B85; --line:#DDE3EE;
+    --primary:#2F4DA0; --on-primary:#FFFFFF; --soft:#E7ECF9;
+    --green:#188A5E; --green-soft:#E3F3EC; --amber:#B97D0A; --red:#C6403E; --red-soft:#FBEAEA;
+    --gold:#C9A227;
+    --shadow:0 1px 2px rgba(23,34,59,.06), 0 10px 26px rgba(23,34,59,.08);
+    --radius:18px;
+  }
+  body.dark{
+    --bg:#0D1220; --card:#161D30; --ink:#E9EDF6; --muted:#93A0BC; --line:#28324A;
+    --primary:#8FA8EE; --on-primary:#0D1220; --soft:#1E2A47;
+    --green:#3DBE8B; --green-soft:#173328; --amber:#E2B23E; --red:#E4726F; --red-soft:#3A2230;
+    --gold:#E3C566;
+    --shadow:0 1px 2px rgba(0,0,0,.35), 0 10px 26px rgba(0,0,0,.35);
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent}
+  html,body{margin:0; padding:0}
+  body{
+    background:var(--bg); color:var(--ink);
+    font-family:'Heebo', -apple-system, 'Segoe UI', Roboto, 'Noto Sans Hebrew', Arial, sans-serif;
+    font-size:16px; line-height:1.45;
+    transition:background .25s, color .25s;
+    padding-bottom:32px;
+  }
+  .wrap{max-width:480px; margin:0 auto; padding:14px 14px 0}
+  .num{direction:ltr; unicode-bidi:isolate; font-variant-numeric:tabular-nums}
+
+  /* ---------- header ---------- */
+  header{display:flex; align-items:flex-start; justify-content:space-between; padding:6px 4px 14px}
+  h1{margin:0; font-size:21px; font-weight:800; letter-spacing:-.2px}
+  .sub{margin:2px 0 0; font-size:13px; color:var(--muted)}
+  .hdr-actions{display:flex; align-items:center; gap:8px}
+  #saveBadge{font-size:12px; color:var(--muted); opacity:0; transition:opacity .3s; white-space:nowrap}
+  #saveBadge.show{opacity:1}
+  #saveBadge.err{color:var(--red); opacity:1}
+  .theme-btn{
+    border:1px solid var(--line); background:var(--card); color:var(--ink);
+    width:42px; height:42px; border-radius:50%; font-size:18px; cursor:pointer;
+    box-shadow:var(--shadow); display:flex; align-items:center; justify-content:center;
+  }
+
+  /* ---------- ticket (summary) ---------- */
+  .ticket{
+    background:var(--card); border-radius:var(--radius); box-shadow:var(--shadow);
+    padding:20px 20px 16px; margin-bottom:18px; position:relative; overflow:hidden;
+  }
+  .ticket::before{content:''; position:absolute; inset-inline:0; top:0; height:5px; background:var(--primary); opacity:.9}
+  .t-label{font-size:13px; color:var(--muted); font-weight:500}
+  .t-remaining{font-size:38px; font-weight:800; letter-spacing:-.5px; margin:2px 0 4px}
+  .t-remaining.over{color:var(--red)}
+  .perf{position:relative; border-top:2px dashed var(--line); margin:14px -20px 12px}
+  .perf::before,.perf::after{
+    content:''; position:absolute; top:-9px; width:18px; height:18px; border-radius:50%;
+    background:var(--bg); transition:background .25s;
+  }
+  .perf::before{right:-9px} .perf::after{left:-9px}
+  .t-row{display:flex; gap:10px}
+  .t-cell{flex:1}
+  .t-cell .v{font-size:19px; font-weight:800}
+  .t-cell .k{font-size:12px; color:var(--muted)}
+  .bar{position:relative; height:9px; border-radius:99px; background:var(--soft); margin-top:12px; overflow:hidden}
+  .bar > i{display:block; height:100%; border-radius:99px; background:var(--primary); transition:width .5s ease}
+  .bar.warn > i{background:var(--amber)} .bar.over > i{background:var(--red)}
+  .t-daily{margin-top:11px; font-size:13px; color:var(--muted)}
+  .t-daily b{color:var(--ink); font-weight:700}
+
+  /* ---------- category cards ---------- */
+  .cats{display:flex; flex-direction:column; gap:10px}
+  .cat{background:var(--card); border-radius:var(--radius); box-shadow:var(--shadow); overflow:hidden; border:1px solid transparent}
+  .cat.over{border-color:var(--red)}
+  .cat-head{
+    display:flex; align-items:center; gap:12px; width:100%; text-align:right;
+    background:none; border:none; color:inherit; font:inherit; padding:14px 16px 10px; cursor:pointer;
+  }
+  .ic{font-size:22px; width:34px; text-align:center; flex-shrink:0}
+  .cat-info{flex:1; min-width:0}
+  .cat-name{display:block; font-weight:600; font-size:15.5px}
+  .cat-meta{display:block; font-size:12.5px; color:var(--muted); margin-top:1px}
+  .cat-meta .over-txt{color:var(--red); font-weight:600}
+  .rec{
+    display:inline-block; margin-top:5px; font-size:12px; font-weight:600;
+    background:var(--soft); color:var(--primary); padding:2.5px 9px; border-radius:99px;
+  }
+  .rec.good{background:var(--green-soft); color:var(--green)}
+  .rec.overday{background:var(--red-soft); color:var(--red)}
+  .cat-right{text-align:left; flex-shrink:0}
+  .remain{display:block; font-weight:800; font-size:17px}
+  .remain.warn{color:var(--amber)} .remain.over{color:var(--red)} .remain.done{color:var(--green)}
+  .remain-lbl{display:block; font-size:11px; color:var(--muted)}
+  .cat .bar{margin:0 16px 14px; height:7px}
+  .cat-body{border-top:1px solid var(--line); padding:12px 16px 16px}
+
+  /* expense list */
+  .exp-empty{font-size:13.5px; color:var(--muted); padding:2px 0 10px}
+  .exp{display:flex; align-items:center; gap:10px; padding:9px 0; border-bottom:1px solid var(--line)}
+  .exp:last-of-type{border-bottom:none}
+  .exp-info{flex:1; min-width:0}
+  .exp-desc{font-size:14.5px; font-weight:500; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+  .exp-date{font-size:12px; color:var(--muted)}
+  .exp-amt{font-weight:700; font-size:15px; flex-shrink:0}
+  .exp-eur{font-size:11.5px; color:var(--muted); display:block; text-align:left}
+  .del{
+    border:1px solid var(--line); background:none; color:var(--muted); border-radius:10px;
+    min-width:38px; height:34px; font-size:15px; cursor:pointer; padding:0 8px; flex-shrink:0;
+  }
+  .del.armed{background:var(--red); border-color:var(--red); color:#fff; font-size:12.5px; font-weight:600}
+
+  /* add-expense form */
+  .form{margin-top:12px}
+  .row1{display:flex; gap:8px}
+  input[type=text], input[type=number]{
+    width:100%; border:1.5px solid var(--line); background:var(--bg); color:var(--ink);
+    border-radius:12px; padding:11px 12px; font:inherit; font-size:16px; outline:none;
+  }
+  input:focus-visible{border-color:var(--primary)}
+  .amt-in{flex:1; direction:ltr; text-align:right}
+  .seg{display:flex; border:1.5px solid var(--line); border-radius:12px; overflow:hidden; flex-shrink:0}
+  .seg button{
+    border:none; background:var(--bg); color:var(--muted); font:inherit; font-size:15px; font-weight:600;
+    width:46px; cursor:pointer;
+  }
+  .seg button.on{background:var(--primary); color:var(--on-primary)}
+  .hint{font-size:12.5px; color:var(--muted); min-height:18px; margin:5px 2px 3px}
+  .desc-in{margin-bottom:8px}
+  .btn{
+    width:100%; border:none; border-radius:12px; padding:12px; font:inherit; font-size:15.5px; font-weight:600;
+    background:var(--primary); color:var(--on-primary); cursor:pointer;
+  }
+  .btn:active{opacity:.85}
+  .btn-ghost{background:var(--soft); color:var(--primary)}
+  .cat-del{
+    margin-top:12px; width:100%; border:1px dashed var(--line); background:none; color:var(--muted);
+    border-radius:12px; padding:9px; font:inherit; font-size:13px; cursor:pointer;
+  }
+  .cat-del.armed{border-style:solid; border-color:var(--red); color:var(--red); font-weight:600}
+
+  /* add category */
+  .add-cat{margin-top:14px}
+  .add-cat .btn{background:var(--card); color:var(--primary); border:1.5px dashed var(--primary); box-shadow:var(--shadow)}
+  .new-cat{background:var(--card); border-radius:var(--radius); box-shadow:var(--shadow); padding:16px; margin-top:14px}
+  .new-cat h3{margin:0 0 10px; font-size:15.5px}
+  .new-cat input{margin-bottom:8px}
+  .new-cat .actions{display:flex; gap:8px}
+  .new-cat .actions .btn{flex:1}
+
+  /* fixed payments group */
+  .fx{margin-top:22px}
+  .fx-head{
+    width:100%; display:flex; align-items:center; justify-content:space-between; gap:8px;
+    background:none; border:none; color:inherit; font:inherit; cursor:pointer; padding:0 6px 10px;
+  }
+  .fx-title{font-size:15px; font-weight:800}
+  .fx-sum{font-size:12.5px; color:var(--muted); text-align:left}
+  .fx-arrow{color:var(--muted); font-size:13px; margin-inline-start:2px}
+
+  footer{margin-top:26px; text-align:center; color:var(--muted); font-size:12.5px}
+  footer .reset{
+    display:inline-block; margin-top:10px; border:none; background:none; color:var(--muted);
+    font:inherit; font-size:12.5px; text-decoration:underline; cursor:pointer;
+  }
+  footer .reset.armed{color:var(--red); font-weight:600; text-decoration:none; background:var(--red-soft); padding:6px 12px; border-radius:10px}
+  .loading{text-align:center; padding:60px 0; color:var(--muted)}
+
+  /* ---------- קסם ---------- */
+  .ticket::before{background:linear-gradient(90deg, var(--primary), var(--gold) 50%, var(--primary))}
+  .castle{position:absolute; bottom:-6px; left:2px; width:132px; height:auto; color:var(--ink); opacity:.06; pointer-events:none}
+  body.dark .castle{opacity:.15; color:#9FB4E8}
+  .spark{display:inline-block; animation:twinkle 2.8s ease-in-out infinite}
+  .spark.s2{animation-delay:1.3s}
+  @keyframes twinkle{0%,100%{opacity:.35; transform:scale(.85)} 50%{opacity:1; transform:scale(1.08)}}
+  body.dark{
+    background-image:
+      radial-gradient(1.3px 1.3px at 15% 40px, rgba(255,255,255,.5) 50%, transparent 51%),
+      radial-gradient(1.6px 1.6px at 70% 24px, rgba(255,255,255,.42) 50%, transparent 51%),
+      radial-gradient(1px 1px at 44% 70px, rgba(255,255,255,.36) 50%, transparent 51%),
+      radial-gradient(1.4px 1.4px at 88% 88px, rgba(255,255,255,.3) 50%, transparent 51%),
+      radial-gradient(1px 1px at 28% 112px, rgba(255,255,255,.3) 50%, transparent 51%);
+    background-repeat:no-repeat;
+  }
+
+  /* ---------- סיכום יומי ---------- */
+  .sumsec{background:var(--card); border-radius:var(--radius); box-shadow:var(--shadow); margin:-6px 0 18px; overflow:hidden}
+  .sum-head{width:100%; display:flex; align-items:center; justify-content:space-between; gap:8px; padding:13px 16px; background:none; border:none; color:inherit; font:inherit; font-weight:700; font-size:14.5px; cursor:pointer}
+  .sum-spent{color:var(--muted); font-weight:600; font-size:13px}
+  .sum-body{border-top:1px solid var(--line); padding:10px 16px 15px}
+  .sum-line{display:flex; justify-content:space-between; gap:10px; font-size:13.5px; padding:5px 0}
+  .sum-line .n{color:var(--muted)}
+  .sum-line span:last-child{font-weight:600}
+  .sum-total{display:flex; justify-content:space-between; font-weight:800; font-size:14.5px; padding:8px 0 2px; border-top:1px dashed var(--line); margin-top:5px}
+  .sum-verdict{margin-top:10px; font-size:13px; font-weight:600; padding:8px 11px; border-radius:11px; background:var(--green-soft); color:var(--green)}
+  .sum-verdict.bad{background:var(--red-soft); color:var(--red)}
+  .sum-sub{margin:14px 0 2px; font-size:13.5px; font-weight:800}
+
+  button:focus-visible, .theme-btn:focus-visible{outline:2px solid var(--primary); outline-offset:2px}
+  @media (prefers-reduced-motion: reduce){
+    *{transition:none !important; animation:none !important}
+  }
+</style>
+</head>
+<body>
+<div class="wrap" id="app"><div class="loading">רגע, טוען את הנתונים…</div></div>
+
+<script>
+(function(){
+'use strict';
+var RATE = 3.46;                     // €1 בשקלים
+var KEY  = 'paris-disney-budget-v1';
+var PREPAID_TS = Date.parse('2026-08-01T10:00:00');
+var TRIP_START = new Date('2026-09-16T00:00:00');
+
+var CASTLE =
+  '<svg class="castle" viewBox="0 0 240 140" aria-hidden="true"><g fill="currentColor">' +
+  '<rect x="30" y="62" width="26" height="78"/><polygon points="24,62 43,26 62,62"/>' +
+  '<rect x="42" y="12" width="2" height="16"/><polygon points="44,12 58,16 44,21"/>' +
+  '<rect x="184" y="62" width="26" height="78"/><polygon points="178,62 197,26 216,62"/>' +
+  '<rect x="196" y="12" width="2" height="16"/><polygon points="198,12 212,16 198,21"/>' +
+  '<rect x="106" y="44" width="28" height="96"/><polygon points="99,44 120,8 141,44"/>' +
+  '<circle cx="120" cy="7" r="3.5"/>' +
+  '<rect x="56" y="98" width="50" height="42"/><rect x="134" y="98" width="50" height="42"/>' +
+  '<rect x="56" y="88" width="8" height="8"/><rect x="70" y="88" width="8" height="8"/><rect x="84" y="88" width="8" height="8"/><rect x="98" y="88" width="8" height="8"/>' +
+  '<rect x="134" y="88" width="8" height="8"/><rect x="148" y="88" width="8" height="8"/><rect x="162" y="88" width="8" height="8"/><rect x="176" y="88" width="8" height="8"/>' +
+  '</g></svg>';
+
+/* חלונות זמן להמלצה היומית */
+var W_DISNEY = {s:'2026-09-16', e:'2026-09-19'};
+var W_SOUV   = {s:'2026-09-16', e:'2026-09-22'};
+var W_PARIS  = {s:'2026-09-20', e:'2026-09-23'};
+
+var DEFAULT_CATS = [
+  /* מעקב יומי */
+  {id:'disney-food',  icon:'🍔', name:'אוכל בדיסני',            budget:4000, group:'daily', window:W_DISNEY},
+  {id:'skip-lines',   icon:'🎢', name:'דילוג תורים בדיסני',      budget:1000, group:'daily'},
+  {id:'souvenirs',    icon:'🎁', name:'מזכרות',                  budget:2000, group:'daily', window:W_SOUV},
+  {id:'paris-attr',   icon:'🗼', name:'אטרקציות ותחבורה בפריז',  budget:1500, group:'daily'},
+  {id:'paris-food',   icon:'🥐', name:'אוכל בפריז',              budget:4000, group:'daily', window:W_PARIS},
+  {id:'shuttles',     icon:'🚐', name:'שאטלים',                  budget:1330, group:'daily'},
+  {id:'tourist-tax',  icon:'🧾', name:'מס תיירות בפריז',         budget:180,  group:'daily'},
+  {id:'luggage',      icon:'🧳', name:'שמירת חפצים',             budget:150,  group:'daily'},
+  {id:'parking',      icon:'🅿️', name:'חניה בנתב״ג',             budget:400,  group:'daily'},
+  /* תשלומים קבועים */
+  {id:'flights',      icon:'✈️', name:'טיסות',                   budget:8985, group:'fixed',
+     paid:[{nis:8985, desc:'שולם — כרטיסי טיסה'}]},
+  {id:'disney-pkg',   icon:'🏰', name:'מלון דיסני + כרטיסים',    budget:7645, group:'fixed',
+     paid:[{nis:1080, desc:'מקדמה ששולמה'}, {nis:6565, desc:'יתרה — שולמה'}]},
+  {id:'cancel-ins',   icon:'🛡️', name:'ביטוח ביטול נסיעה',       budget:1600, group:'fixed',
+     paid:[{nis:1600, desc:'שולם'}]},
+  {id:'health-ins',   icon:'🩺', name:'ביטוח בריאות',            budget:503,  group:'fixed',
+     paid:[{nis:503, desc:'שולם'}]},
+  {id:'paris-hotel',  icon:'🏨', name:'מלון פריז (34B)',         budget:5228, group:'fixed',
+     paid:[{nis:5228, desc:'שולם במלואו · €1,515.36'}]},
+  {id:'misc-fees',    icon:'💳', name:'עמלות, גלישה ושונות',     budget:900,  group:'fixed'}
+];
+
+var state = null;
+var expandedId = null;
+var newCatOpen = false;
+var fixedOpen = false;
+var summaryOpen = false;
+var formCur = {};
+var saveTimer = null;
+
+var nf = new Intl.NumberFormat('he-IL', {maximumFractionDigits:0});
+
+function ils(n){ return '<span class="num">₪' + nf.format(Math.round(n)) + '</span>'; }
+function eur(n){ return '<span class="num">€' + (Math.round(n*100)/100) + '</span>'; }
+function esc(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function catSpent(c){ var s=0; for(var i=0;i<c.expenses.length;i++) s+=c.expenses[i].nis; return s; }
+function fmtDate(ts){ var d=new Date(ts); return d.getDate()+'.'+(d.getMonth()+1); }
+function isFixed(c){ return c.group === 'fixed'; }
+function statusOf(c, spent){
+  if(isFixed(c)) return spent > c.budget + 0.5 ? 'over' : 'ok';
+  var r = c.budget > 0 ? spent / c.budget : 1;
+  return r >= 1 ? 'over' : (r >= 0.8 ? 'warn' : 'ok');
+}
+
+/* ---------- המלצה יומית ---------- */
+function recInfo(c){
+  if(!c.window) return null;
+  var now = new Date();
+  var winStart = new Date(c.window.s + 'T00:00:00');
+  var winEndD  = new Date(c.window.e + 'T00:00:00');
+  var winEnd   = new Date(c.window.e + 'T23:59:59');
+  if(now > winEnd) return null;
+
+  var todayStr = now.toDateString();
+  var spentToday = 0, spentBefore = 0;
+  c.expenses.forEach(function(e){
+    if(new Date(e.ts).toDateString() === todayStr) spentToday += e.nis;
+    else spentBefore += e.nis;
+  });
+
+  var msDay = 86400000;
+  var countFrom = now < winStart ? winStart : new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  var daysLeft = Math.max(1, Math.round((winEndD - countFrom) / msDay) + 1);
+  var rec = Math.max(0, (c.budget - spentBefore) / daysLeft);
+  return {rec: rec, today: spentToday, pre: now < winStart, days: daysLeft};
+}
+function recChip(c){
+  var r = recInfo(c);
+  if(!r) return '';
+  if(r.pre){
+    return '<span class="rec">קצב מומלץ בטיול: ' + ils(r.rec) + ' ליום</span>';
+  }
+  var cls = r.today > r.rec + 0.5 ? 'overday' : (r.today > 0 ? 'good' : '');
+  return '<span class="rec ' + cls + '">מומלץ להיום: ' + ils(r.rec) + ' · הוצא היום: ' + ils(r.today) + '</span>';
+}
+
+function tomorrowRec(c, includePre){
+  if(!c.window) return null;
+  var now = new Date();
+  var tom = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+  var winStart = new Date(c.window.s + 'T00:00:00');
+  var winEndD  = new Date(c.window.e + 'T00:00:00');
+  if(tom > winEndD) return null;
+  if(tom < winStart && !includePre) return null;
+  var from = tom < winStart ? winStart : tom;
+  var daysLeft = Math.max(1, Math.round((winEndD - from) / 86400000) + 1);
+  return Math.max(0, (c.budget - catSpent(c)) / daysLeft);
+}
+
+function summaryHTML(){
+  var daily = state.categories.filter(function(c){ return !isFixed(c); });
+  var todayStr = new Date().toDateString();
+  var lines = '', total = 0;
+  daily.forEach(function(c){
+    var t = 0;
+    c.expenses.forEach(function(e){ if(new Date(e.ts).toDateString() === todayStr) t += e.nis; });
+    if(t > 0){
+      lines += '<div class="sum-line"><span class="n">' + c.icon + ' ' + esc(c.name) + '</span><span>' + ils(t) + '</span></div>';
+      total += t;
+    }
+  });
+
+  var head =
+    '<button class="sum-head" data-action="toggleSum" aria-expanded="' + summaryOpen + '">' +
+      '<span>📊 סיכום היום</span>' +
+      '<span class="sum-spent">הוצא ' + ils(total) + ' <span class="fx-arrow">' + (summaryOpen ? '▲' : '▼') + '</span></span>' +
+    '</button>';
+
+  if(!summaryOpen) return '<section class="sumsec">' + head + '</section>';
+
+  var inner = lines || '<div class="sum-line"><span class="n">עוד לא נרשמו הוצאות היום</span><span></span></div>';
+  if(total > 0){
+    inner += '<div class="sum-total"><span>סה״כ הוצא היום</span><span>' + ils(total) + '</span></div>';
+  }
+
+  var recTotal = 0, hasActive = false;
+  daily.forEach(function(c){
+    var r = recInfo(c);
+    if(r && !r.pre){ recTotal += r.rec; hasActive = true; }
+  });
+  if(hasActive){
+    var diff = recTotal - total;
+    inner += diff >= 0
+      ? '<div class="sum-verdict">אתם בתוך הקצב היומי ✓ אפשר להוציא היום עוד ' + ils(diff) + '</div>'
+      : '<div class="sum-verdict bad">חרגתם מהקצב היומי ב־' + ils(-diff) + ' — ההמלצה למחר עודכנה בהתאם</div>';
+  }
+
+  var now = new Date();
+  var tom = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+  var preTrip = tom < TRIP_START;
+  var suffix = preTrip ? ' ליום' : '';
+  var tomLines = '', tomTotal = 0, anyTom = false;
+  daily.forEach(function(c){
+    var tr = tomorrowRec(c, preTrip);
+    if(tr !== null){
+      anyTom = true; tomTotal += tr;
+      tomLines += '<div class="sum-line"><span class="n">' + c.icon + ' ' + esc(c.name) + '</span><span>' + ils(tr) + suffix + '</span></div>';
+    }
+  });
+  if(anyTom){
+    var lbl = preTrip
+      ? '✨ הקצב המתוכנן לימי הטיול'
+      : '✨ מומלץ למחר (' + tom.getDate() + '.' + (tom.getMonth() + 1) + ')';
+    inner += '<div class="sum-sub">' + lbl + '</div>' + tomLines;
+    if(!preTrip){
+      inner += '<div class="sum-total"><span>סה״כ מומלץ למחר</span><span>' + ils(tomTotal) + '</span></div>';
+    }
+  }
+
+  return '<section class="sumsec">' + head + '<div class="sum-body">' + inner + '</div></section>';
+}
+
+/* עדכונים חד־פעמיים שמוחלים גם על נתונים ששמורים כבר */
+var MIGRATIONS = [
+  {key:'paid-disney-balance', cat:'disney-pkg',  budget:7645,
+   add:{id:'p-disney-pkg-1', nis:6565, desc:'יתרה — שולמה'}},
+  {key:'paid-paris-hotel',    cat:'paris-hotel', budget:5228,
+   add:{id:'p-paris-hotel-0', nis:5228, desc:'שולם במלואו · €1,515.36'}},
+  {key:'paid-health-ins',     cat:'health-ins',  budget:503,
+   add:{id:'p-health-ins-0', nis:503, desc:'שולם'}}
+];
+
+/* ---------- אחסון ---------- */
+function buildCat(d){
+  var c = {id:d.id, icon:d.icon, name:d.name, budget:d.budget, group:d.group, expenses:[]};
+  if(d.window) c.window = d.window;
+  if(d.paid){
+    d.paid.forEach(function(p, i){
+      c.expenses.push({id:'p-' + d.id + '-' + i, nis:p.nis, orig:p.nis, cur:'ILS', desc:p.desc, ts:PREPAID_TS});
+    });
+  }
+  return c;
+}
+function defaultState(){
+  return { dark:false, applied: MIGRATIONS.map(function(m){ return m.key; }),
+           categories: DEFAULT_CATS.map(buildCat) };
+}
+function migrate(s){
+  DEFAULT_CATS.forEach(function(d){
+    var found = null;
+    for(var i=0;i<s.categories.length;i++){ if(s.categories[i].id === d.id){ found = s.categories[i]; break; } }
+    if(!found){ s.categories.push(buildCat(d)); }
+    else{
+      found.group = d.group;
+      if(d.window) found.window = d.window;
+      if(!found.icon) found.icon = d.icon;
+    }
+  });
+  s.categories.forEach(function(c){ if(!c.group) c.group = 'daily'; });
+
+  if(!s.applied) s.applied = [];
+  MIGRATIONS.forEach(function(m){
+    if(s.applied.indexOf(m.key) !== -1) return;
+    var cat = null;
+    for(var i=0;i<s.categories.length;i++){ if(s.categories[i].id === m.cat){ cat = s.categories[i]; break; } }
+    if(cat){
+      cat.budget = m.budget;
+      var exists = cat.expenses.some(function(e){ return e.id === m.add.id; });
+      if(!exists){
+        cat.expenses.push({id:m.add.id, nis:m.add.nis, orig:m.add.nis, cur:'ILS', desc:m.add.desc, ts:PREPAID_TS});
+      }
+    }
+    s.applied.push(m.key);
+  });
+  return s;
+}
+var API = '/api/budget';
+var pending = false;
+
+function cacheGet(){
+  try{ var raw = localStorage.getItem(KEY); return raw ? JSON.parse(raw) : null; }
+  catch(err){ return null; }
+}
+function cachePut(s){
+  try{ localStorage.setItem(KEY, JSON.stringify(s)); }catch(err){}
+}
+
+/* טוען מהשרת, ומשווה מול המטמון המקומי — המאוחר יותר מנצח */
+function load(){
+  var local = cacheGet();
+  return fetch(API, {cache:'no-store'})
+    .then(function(r){ return r.ok ? r.json() : null; })
+    .then(function(remote){
+      var pick = remote;
+      if(local && (!remote || (local.updated || 0) > (remote.updated || 0))) pick = local;
+      if(pick && pick.categories && pick.categories.length){
+        if(pick === local && remote) pending = true;   /* יש שינוי מקומי שטרם נשלח */
+        return migrate(pick);
+      }
+      return null;
+    })
+    .catch(function(){
+      if(local && local.categories && local.categories.length){
+        pending = true;
+        return migrate(local);
+      }
+      return null;
+    });
+}
+
+function scheduleSave(){ clearTimeout(saveTimer); saveTimer = setTimeout(doSave, 250); }
+
+function doSave(){
+  state.updated = Date.now();
+  cachePut(state);                       /* תמיד נשמר מקומית קודם */
+  badge('שומר…', false);
+  fetch(API, {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify(state)
+  }).then(function(r){
+    if(r.ok){ pending = false; badge('נשמר ✓', false); }
+    else { pending = true; badge('נשמר במכשיר בלבד', true); }
+  }).catch(function(){
+    pending = true;
+    badge('אין רשת — נשמר במכשיר', true);
+  });
+}
+
+/* ניסיון חוזר לשלוח שינויים שנתקעו בלי רשת */
+function retryPending(){ if(pending && state) doSave(); }
+function badge(txt, isErr){
+  var b = document.getElementById('saveBadge'); if(!b) return;
+  b.textContent = txt;
+  b.className = isErr ? 'err' : 'show';
+  if(!isErr){ setTimeout(function(){ b.className=''; }, 1800); }
+}
+
+/* ---------- תבניות ---------- */
+function ticketHTML(){
+  var budget=0, spent=0, dBudget=0, dSpent=0;
+  state.categories.forEach(function(c){
+    var s = catSpent(c);
+    budget += c.budget; spent += s;
+    if(!isFixed(c)){ dBudget += c.budget; dSpent += s; }
+  });
+  var remain = budget - spent;
+  var over = remain < 0;
+  var pct = budget > 0 ? Math.min(spent/budget*100, 100) : 100;
+  var remainTxt = over ? 'חריגה של ' + ils(-remain) : ils(remain);
+  return '' +
+  '<section class="ticket">' +
+    '<div class="t-label">נשאר מכלל תקציב הטיול <span class="spark s2">✨</span></div>' +
+    '<div class="t-remaining' + (over ? ' over' : '') + '">' + remainTxt + '</div>' +
+    '<div class="perf"></div>' +
+    '<div class="t-row">' +
+      '<div class="t-cell"><div class="v">' + ils(budget) + '</div><div class="k">התקציב הכולל</div></div>' +
+      '<div class="t-cell"><div class="v">' + ils(spent) + '</div><div class="k">שולם והוצא עד עכשיו</div></div>' +
+    '</div>' +
+    '<div class="bar' + (over ? ' over' : '') + '"><i style="width:' + pct + '%"></i></div>' +
+    '<div class="t-daily">מזה, נשאר להוצאות השוטפות: <b>' + ils(Math.max(0, dBudget - dSpent)) + '</b></div>' +
+    CASTLE +
+  '</section>';
+}
+
+function expHTML(cat, e){
+  var eurNote = e.cur === 'EUR' ? '<span class="exp-eur">' + eur(e.orig) + '</span>' : '';
+  return '' +
+  '<div class="exp">' +
+    '<div class="exp-info">' +
+      '<div class="exp-desc">' + esc(e.desc || 'הוצאה') + '</div>' +
+      '<div class="exp-date">' + fmtDate(e.ts) + '</div>' +
+    '</div>' +
+    '<div class="exp-amt">' + ils(e.nis) + eurNote + '</div>' +
+    '<button class="del" data-action="delExp" data-cat="' + cat.id + '" data-id="' + e.id + '" aria-label="מחיקת הוצאה">✕</button>' +
+  '</div>';
+}
+
+function catHTML(c){
+  var fixed = isFixed(c);
+  var spent = catSpent(c);
+  var remain = c.budget - spent;
+  var st = statusOf(c, spent);
+  var pct = c.budget > 0 ? Math.min(spent/c.budget*100, 100) : 100;
+  var open = expandedId === c.id;
+  var cur = formCur[c.id] || 'ILS';
+
+  var verb = fixed ? 'שולם ' : 'הוצא ';
+  var meta = verb + ils(spent) + ' מתוך ' + ils(c.budget);
+  if(st === 'over') meta += ' · <span class="over-txt">חריגה של ' + ils(spent - c.budget) + '</span>';
+
+  var remainBlock;
+  if(remain < -0.5){
+    remainBlock = '<span class="remain over">' + ils(-remain) + '-</span><span class="remain-lbl">מעל התקציב</span>';
+  } else if(fixed && remain <= 0.5){
+    remainBlock = '<span class="remain done">✓</span><span class="remain-lbl">שולם במלואו</span>';
+  } else {
+    remainBlock = '<span class="remain ' + st + '">' + ils(remain) + '</span>' +
+                  '<span class="remain-lbl">' + (fixed ? 'נשאר לשלם' : 'נשאר') + '</span>';
+  }
+
+  var body = '';
+  if(open){
+    var list = c.expenses.length
+      ? c.expenses.slice().reverse().map(function(e){ return expHTML(c, e); }).join('')
+      : '<div class="exp-empty">' + (fixed
+          ? 'עוד לא נרשם תשלום — כשתשלם, תרשום אותו כאן למטה.'
+          : 'עוד לא נרשמו הוצאות בקטגוריה הזאת — הראשונה נרשמת כאן למטה.') + '</div>';
+
+    var delCat = c.expenses.length === 0
+      ? '<button class="cat-del" data-action="delCat" data-id="' + c.id + '">מחיקת הקטגוריה</button>'
+      : '';
+
+    body =
+    '<div class="cat-body">' + list +
+      '<div class="form">' +
+        '<div class="row1">' +
+          '<input class="amt-in" type="number" inputmode="decimal" min="0" step="0.01" placeholder="סכום" id="amt-' + c.id + '" data-cat="' + c.id + '">' +
+          '<div class="seg">' +
+            '<button data-action="cur" data-cat="' + c.id + '" data-cur="ILS" class="' + (cur==='ILS'?'on':'') + '">₪</button>' +
+            '<button data-action="cur" data-cat="' + c.id + '" data-cur="EUR" class="' + (cur==='EUR'?'on':'') + '">€</button>' +
+          '</div>' +
+        '</div>' +
+        '<div class="hint" id="hint-' + c.id + '"></div>' +
+        '<input class="desc-in" type="text" placeholder="תיאור (לא חובה)" id="desc-' + c.id + '" data-cat="' + c.id + '">' +
+        '<button class="btn" data-action="addExp" data-cat="' + c.id + '">' + (fixed ? 'רישום תשלום' : 'הוספת הוצאה') + '</button>' +
+      '</div>' + delCat +
+    '</div>';
+  }
+
+  return '' +
+  '<div class="cat ' + st + '">' +
+    '<button class="cat-head" data-action="toggle" data-id="' + c.id + '" aria-expanded="' + open + '">' +
+      '<span class="ic">' + c.icon + '</span>' +
+      '<span class="cat-info"><span class="cat-name">' + esc(c.name) + '</span>' +
+      '<span class="cat-meta">' + meta + '</span>' + recChip(c) + '</span>' +
+      '<span class="cat-right">' + remainBlock + '</span>' +
+    '</button>' +
+    '<div class="bar ' + st + '"><i style="width:' + pct + '%"></i></div>' +
+    body +
+  '</div>';
+}
+
+function fixedHTML(){
+  var cats = state.categories.filter(isFixed);
+  if(!cats.length) return '';
+  var b=0, s=0;
+  cats.forEach(function(c){ b += c.budget; s += catSpent(c); });
+  var cards = fixedOpen ? '<section class="cats">' + cats.map(catHTML).join('') + '</section>' : '';
+  return '' +
+  '<div class="fx">' +
+    '<button class="fx-head" data-action="toggleFixed" aria-expanded="' + fixedOpen + '">' +
+      '<span class="fx-title">תשלומים קבועים וחד־פעמיים</span>' +
+      '<span class="fx-sum">שולם ' + ils(s) + ' מתוך ' + ils(b) +
+      ' <span class="fx-arrow">' + (fixedOpen ? '▲' : '▼') + '</span></span>' +
+    '</button>' + cards +
+  '</div>';
+}
+
+function newCatHTML(){
+  if(!newCatOpen){
+    return '<div class="add-cat"><button class="btn" data-action="openNewCat">+ קטגוריה חדשה</button></div>';
+  }
+  return '' +
+  '<div class="new-cat">' +
+    '<h3>קטגוריה חדשה</h3>' +
+    '<input type="text" id="nc-name" placeholder="שם הקטגוריה">' +
+    '<input type="number" id="nc-budget" inputmode="numeric" min="0" placeholder="תקציב בשקלים">' +
+    '<div class="actions">' +
+      '<button class="btn" data-action="addCat">הוספה</button>' +
+      '<button class="btn btn-ghost" data-action="closeNewCat">ביטול</button>' +
+    '</div>' +
+  '</div>';
+}
+
+function render(){
+  var daily = state.categories.filter(function(c){ return !isFixed(c); });
+  var app = document.getElementById('app');
+  app.innerHTML = '' +
+  '<header>' +
+    '<div><h1>תקציב הטיול <span class="spark">✨</span></h1><p class="sub">דיסנילנד ופריז · 16–23 בספטמבר</p></div>' +
+    '<div class="hdr-actions"><span id="saveBadge"></span>' +
+    '<button class="theme-btn" data-action="refresh" aria-label="רענון נתונים">⟳</button>' +
+    '<button class="theme-btn" data-action="theme" aria-label="החלפת מצב תצוגה">' + (state.dark ? '☀️' : '🌙') + '</button></div>' +
+  '</header>' +
+  ticketHTML() +
+  summaryHTML() +
+  '<section class="cats">' + daily.map(catHTML).join('') + '</section>' +
+  newCatHTML() +
+  fixedHTML() +
+  '<footer>שער ההמרה: <span class="num">€1 = ₪' + RATE + '</span>' +
+  '<br>הנתונים משותפים — כל מי שיש לו את הקישור רואה ומעדכן את אותה טבלה' +
+  '<br><button class="reset" data-action="reset">איפוס כל הנתונים</button></footer>';
+}
+
+/* ---------- פעולות ---------- */
+function arm(btn, txt, fn){
+  if(btn.dataset.armed === '1'){ fn(); return; }
+  var orig = btn.textContent;
+  btn.dataset.armed = '1';
+  btn.classList.add('armed');
+  btn.textContent = txt;
+  setTimeout(function(){
+    if(btn && btn.dataset){ btn.dataset.armed=''; btn.classList.remove('armed'); btn.textContent = orig; }
+  }, 2600);
+}
+
+function addExpense(catId){
+  var amtEl = document.getElementById('amt-' + catId);
+  var descEl = document.getElementById('desc-' + catId);
+  var amt = parseFloat(amtEl.value);
+  if(!(amt > 0)){ amtEl.focus(); return; }
+  var cur = formCur[catId] || 'ILS';
+  var nis = cur === 'EUR' ? Math.round(amt * RATE * 100) / 100 : amt;
+  var cat = state.categories.filter(function(c){ return c.id === catId; })[0];
+  if(!cat) return;
+  cat.expenses.push({
+    id: 'e' + Date.now() + Math.floor(Math.random()*1000),
+    nis: nis, orig: amt, cur: cur,
+    desc: (descEl.value || '').trim().slice(0,60),
+    ts: Date.now()
+  });
+  scheduleSave();
+  render();
+}
+
+function updateHint(catId){
+  var amtEl = document.getElementById('amt-' + catId);
+  var hint = document.getElementById('hint-' + catId);
+  if(!amtEl || !hint) return;
+  var amt = parseFloat(amtEl.value);
+  var cur = formCur[catId] || 'ILS';
+  if(cur === 'EUR' && amt > 0){
+    hint.innerHTML = 'יומר אוטומטית: <span class="num">≈ ₪' + nf.format(Math.round(amt*RATE)) + '</span>';
+  } else { hint.textContent = ''; }
+}
+
+document.getElementById('app').addEventListener('click', function(ev){
+  var btn = ev.target.closest('[data-action]');
+  if(!btn) return;
+  var a = btn.dataset.action;
+
+  if(a === 'toggle'){
+    expandedId = (expandedId === btn.dataset.id) ? null : btn.dataset.id;
+    render(); return;
+  }
+  if(a === 'refresh'){
+    if(pending){ doSave(); return; }
+    pullFresh(false);
+    return;
+  }
+  if(a === 'toggleFixed'){ fixedOpen = !fixedOpen; render(); return; }
+  if(a === 'toggleSum'){ summaryOpen = !summaryOpen; render(); return; }
+  if(a === 'theme'){
+    state.dark = !state.dark;
+    document.body.classList.toggle('dark', state.dark);
+    scheduleSave(); render(); return;
+  }
+  if(a === 'cur'){
+    var cid = btn.dataset.cat;
+    formCur[cid] = btn.dataset.cur;
+    var seg = btn.parentElement.querySelectorAll('button');
+    for(var i=0;i<seg.length;i++) seg[i].classList.toggle('on', seg[i] === btn);
+    updateHint(cid); return;
+  }
+  if(a === 'addExp'){ addExpense(btn.dataset.cat); return; }
+  if(a === 'delExp'){
+    arm(btn, 'אישור', function(){
+      var cat = state.categories.filter(function(c){ return c.id === btn.dataset.cat; })[0];
+      if(!cat) return;
+      cat.expenses = cat.expenses.filter(function(e){ return e.id !== btn.dataset.id; });
+      scheduleSave(); render();
+    }); return;
+  }
+  if(a === 'openNewCat'){ newCatOpen = true; render(); return; }
+  if(a === 'closeNewCat'){ newCatOpen = false; render(); return; }
+  if(a === 'addCat'){
+    var nameEl = document.getElementById('nc-name');
+    var budEl  = document.getElementById('nc-budget');
+    var name = (nameEl.value || '').trim();
+    var bud = parseFloat(budEl.value);
+    if(!name){ nameEl.focus(); return; }
+    if(!(bud >= 0)){ budEl.focus(); return; }
+    state.categories.push({
+      id: 'c' + Date.now(), icon:'📌', name: name.slice(0,40), budget: bud, group:'daily', expenses: []
+    });
+    newCatOpen = false;
+    scheduleSave(); render(); return;
+  }
+  if(a === 'delCat'){
+    arm(btn, 'בטוח? לחיצה נוספת תמחק', function(){
+      state.categories = state.categories.filter(function(c){ return c.id !== btn.dataset.id; });
+      if(expandedId === btn.dataset.id) expandedId = null;
+      scheduleSave(); render();
+    }); return;
+  }
+  if(a === 'reset'){
+    arm(btn, 'כל ההוצאות יימחקו — לחיצה נוספת לאישור', function(){
+      var dark = state.dark;
+      state = defaultState(); state.dark = dark;
+      expandedId = null; newCatOpen = false; fixedOpen = false; summaryOpen = false; formCur = {};
+      scheduleSave(); render();
+    }); return;
+  }
+});
+
+document.getElementById('app').addEventListener('input', function(ev){
+  if(ev.target.id && ev.target.id.indexOf('amt-') === 0){
+    updateHint(ev.target.dataset.cat);
+  }
+});
+document.getElementById('app').addEventListener('keydown', function(ev){
+  if(ev.key === 'Enter' && ev.target.dataset && ev.target.dataset.cat){
+    ev.preventDefault();
+    addExpense(ev.target.dataset.cat);
+  }
+});
+
+function pullFresh(quiet){
+  if(!quiet) badge('מרענן…', false);
+  return load().then(function(fresh){
+    if(fresh && (fresh.updated || 0) > (state.updated || 0)){
+      var d = state.dark; state = fresh; state.dark = d; render();
+      if(!quiet) badge('עודכן ✓', false);
+      return true;
+    }
+    if(!quiet) badge('אין עדכונים חדשים', false);
+    return false;
+  });
+}
+
+/* כשחוזרים למסך: קודם דוחפים שינויים תקועים, ואז מושכים עדכונים מבן הזוג */
+document.addEventListener('visibilitychange', function(){
+  if(document.visibilityState !== 'visible' || !state) return;
+  if(pending){ doSave(); } else { pullFresh(true); }
+});
+window.addEventListener('online', retryPending);
+
+/* ---------- הפעלה ---------- */
+load().then(function(loaded){
+  state = loaded || defaultState();
+  if(!loaded){ scheduleSave(); }
+  document.body.classList.toggle('dark', !!state.dark);
+  render();
+});
+})();
+</script>
+</body>
+</html>
