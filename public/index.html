@@ -200,6 +200,25 @@
   .sum-verdict.bad{background:var(--red-soft); color:var(--red)}
   .sum-sub{margin:14px 0 2px; font-size:13.5px; font-weight:800}
 
+  /* ---------- כרית ביטחון ושער ---------- */
+  .cat.buffer{border:1px solid var(--gold)}
+  .cat.buffer .bar > i{background:var(--gold)}
+  .cat.buffer.warn .bar > i{background:var(--amber)}
+  .cat.buffer.over{border-color:var(--red)}
+  .cat.buffer.over .bar > i{background:var(--red)}
+  .cat.buffer .remain.ok{color:var(--gold)}
+  .buf-note{margin-top:10px; font-size:12.5px; color:var(--muted); line-height:1.4}
+  .raterow{display:flex; align-items:center; justify-content:center; gap:6px; margin-bottom:9px; flex-wrap:wrap}
+  .rate-in{
+    width:74px; border:1.5px solid var(--line); background:var(--card); color:var(--ink);
+    border-radius:10px; padding:7px 8px; font:inherit; font-size:15px; text-align:center; outline:none;
+  }
+  .rate-in:focus-visible{border-color:var(--primary)}
+  .rate-save{
+    border:none; background:var(--soft); color:var(--primary); border-radius:10px;
+    padding:8px 13px; font:inherit; font-size:13px; font-weight:600; cursor:pointer;
+  }
+
   button:focus-visible, .theme-btn:focus-visible{outline:2px solid var(--primary); outline-offset:2px}
   @media (prefers-reduced-motion: reduce){
     *{transition:none !important; animation:none !important}
@@ -212,7 +231,9 @@
 <script>
 (function(){
 'use strict';
-var RATE = 3.46;                     // €1 בשקלים
+var DEFAULT_RATE = 3.46;             // €1 בשקלים
+var BUFFER_BASE  = 2912;             // מקדם ביטחון 20% על הקטגוריות שטרם שולמו
+function rate(){ return (state && state.rate > 0) ? state.rate : DEFAULT_RATE; }
 var KEY  = 'paris-disney-budget-v1';
 var PREPAID_TS = Date.parse('2026-08-01T10:00:00');
 var TRIP_START = new Date('2026-09-16T00:00:00');
@@ -412,7 +433,7 @@ function buildCat(d){
   return c;
 }
 function defaultState(){
-  return { dark:false, applied: MIGRATIONS.map(function(m){ return m.key; }),
+  return { dark:false, rate: DEFAULT_RATE, applied: MIGRATIONS.map(function(m){ return m.key; }),
            categories: DEFAULT_CATS.map(buildCat) };
 }
 function migrate(s){
@@ -427,6 +448,7 @@ function migrate(s){
     }
   });
   s.categories.forEach(function(c){ if(!c.group) c.group = 'daily'; });
+  if(!(s.rate > 0)) s.rate = DEFAULT_RATE;
 
   if(!s.applied) s.applied = [];
   MIGRATIONS.forEach(function(m){
@@ -514,6 +536,11 @@ function ticketHTML(){
     budget += c.budget; spent += s;
     if(!isFixed(c)){ dBudget += c.budget; dSpent += s; }
   });
+  var buf = bufferInfo();
+  budget += buf.base;
+  spent  += buf.used;
+  dBudget += buf.base;
+  dSpent  += buf.used;
   var remain = budget - spent;
   var over = remain < 0;
   var pct = budget > 0 ? Math.min(spent/budget*100, 100) : 100;
@@ -531,6 +558,66 @@ function ticketHTML(){
     '<div class="t-daily">מזה, נשאר להוצאות השוטפות: <b>' + ils(Math.max(0, dBudget - dSpent)) + '</b></div>' +
     CASTLE +
   '</section>';
+}
+
+/* ---------- מקדם ביטחון ---------- */
+function bufferInfo(){
+  var overages = 0, extras = 0, hits = [];
+  state.categories.forEach(function(c){
+    if(c.custom){
+      extras += c.budget;
+      hits.push({icon:c.icon, name:c.name, amt:c.budget, why:'קטגוריה חדשה'});
+      var ov = catSpent(c) - c.budget;
+      if(ov > 0.5){ overages += ov; hits.push({icon:c.icon, name:c.name, amt:ov, why:'חריגה'}); }
+      return;
+    }
+    var over = catSpent(c) - c.budget;
+    if(over > 0.5){
+      overages += over;
+      hits.push({icon:c.icon, name:c.name, amt:over, why:'חריגה'});
+    }
+  });
+  var used = overages + extras;
+  return {base:BUFFER_BASE, used:used, left:BUFFER_BASE - used, hits:hits};
+}
+
+function bufferHTML(){
+  var b = bufferInfo();
+  var pct = Math.min(b.used / b.base * 100, 100);
+  var st = b.left <= 0 ? 'over' : (b.left < b.base * 0.2 ? 'warn' : 'ok');
+  var open = expandedId === '__buffer';
+
+  var val = b.left >= 0
+    ? '<span class="remain ' + st + '">' + ils(b.left) + '</span><span class="remain-lbl">נותר בכרית</span>'
+    : '<span class="remain over">' + ils(-b.left) + '-</span><span class="remain-lbl">הכרית נגמרה</span>';
+
+  var body = '';
+  if(open){
+    var lines = b.hits.length
+      ? b.hits.map(function(h){
+          return '<div class="sum-line"><span class="n">' + h.icon + ' ' + esc(h.name) +
+                 ' · ' + h.why + '</span><span>' + ils(h.amt) + '-</span></div>';
+        }).join('')
+      : '<div class="exp-empty">הכרית שלמה — אין חריגות ולא נוספו קטגוריות.</div>';
+    body = '<div class="cat-body">' +
+      '<div class="sum-line"><span class="n">מקדם ביטחון 20% על הקטגוריות שטרם שולמו</span><span>' + ils(b.base) + '</span></div>' +
+      lines +
+      '<div class="sum-total"><span>נותר בכרית</span><span>' + ils(b.left) + '</span></div>' +
+      '<div class="buf-note">הכרית יורדת אוטומטית בכל חריגה מקטגוריה קיימת ובכל קטגוריה חדשה שתוסיפו.</div>' +
+    '</div>';
+  }
+
+  return '' +
+  '<div class="cat buffer ' + st + '">' +
+    '<button class="cat-head" data-action="toggle" data-id="__buffer" aria-expanded="' + open + '">' +
+      '<span class="ic">🛟</span>' +
+      '<span class="cat-info"><span class="cat-name">כרית ביטחון</span>' +
+      '<span class="cat-meta">נוצל ' + ils(b.used) + ' מתוך ' + ils(b.base) + '</span></span>' +
+      '<span class="cat-right">' + val + '</span>' +
+    '</button>' +
+    '<div class="bar ' + st + '"><i style="width:' + pct + '%"></i></div>' +
+    body +
+  '</div>';
 }
 
 function expHTML(cat, e){
@@ -553,7 +640,7 @@ function catHTML(c){
   var st = statusOf(c, spent);
   var pct = c.budget > 0 ? Math.min(spent/c.budget*100, 100) : 100;
   var open = expandedId === c.id;
-  var cur = formCur[c.id] || 'ILS';
+  var cur = formCur[c.id] || 'EUR';
 
   var verb = fixed ? 'שולם ' : 'הוצא ';
   var meta = verb + ils(spent) + ' מתוך ' + ils(c.budget);
@@ -592,7 +679,7 @@ function catHTML(c){
           '</div>' +
         '</div>' +
         '<div class="hint" id="hint-' + c.id + '"></div>' +
-        '<input class="desc-in" type="text" placeholder="תיאור (לא חובה)" id="desc-' + c.id + '" data-cat="' + c.id + '">' +
+        '<input class="desc-in" type="text" maxlength="60" placeholder="על מה? למשל: גלידה, מזכרת למשפחה" id="desc-' + c.id + '" data-cat="' + c.id + '">' +
         '<button class="btn" data-action="addExp" data-cat="' + c.id + '">' + (fixed ? 'רישום תשלום' : 'הוספת הוצאה') + '</button>' +
       '</div>' + delCat +
     '</div>';
@@ -655,11 +742,14 @@ function render(){
   '</header>' +
   ticketHTML() +
   summaryHTML() +
-  '<section class="cats">' + daily.map(catHTML).join('') + '</section>' +
+  '<section class="cats">' + daily.map(catHTML).join('') + bufferHTML() + '</section>' +
   newCatHTML() +
   fixedHTML() +
-  '<footer>שער ההמרה: <span class="num">€1 = ₪' + RATE + '</span>' +
-  '<br>הנתונים משותפים — כל מי שיש לו את הקישור רואה ומעדכן את אותה טבלה' +
+  '<footer>' +
+  '<div class="raterow">שער היום: <span class="num">€1 =</span> ₪' +
+  '<input class="rate-in num" type="number" inputmode="decimal" min="0.5" max="10" step="0.01" id="rateIn" value="' + rate() + '">' +
+  '<button class="rate-save" data-action="saveRate">עדכון</button></div>' +
+  'הנתונים משותפים — כל מי שיש לו את הקישור רואה ומעדכן את אותה טבלה' +
   '<br><button class="reset" data-action="reset">איפוס כל הנתונים</button></footer>';
 }
 
@@ -680,8 +770,8 @@ function addExpense(catId){
   var descEl = document.getElementById('desc-' + catId);
   var amt = parseFloat(amtEl.value);
   if(!(amt > 0)){ amtEl.focus(); return; }
-  var cur = formCur[catId] || 'ILS';
-  var nis = cur === 'EUR' ? Math.round(amt * RATE * 100) / 100 : amt;
+  var cur = formCur[catId] || 'EUR';
+  var nis = cur === 'EUR' ? Math.round(amt * rate() * 100) / 100 : amt;
   var cat = state.categories.filter(function(c){ return c.id === catId; })[0];
   if(!cat) return;
   cat.expenses.push({
@@ -699,9 +789,9 @@ function updateHint(catId){
   var hint = document.getElementById('hint-' + catId);
   if(!amtEl || !hint) return;
   var amt = parseFloat(amtEl.value);
-  var cur = formCur[catId] || 'ILS';
+  var cur = formCur[catId] || 'EUR';
   if(cur === 'EUR' && amt > 0){
-    hint.innerHTML = 'יומר אוטומטית: <span class="num">≈ ₪' + nf.format(Math.round(amt*RATE)) + '</span>';
+    hint.innerHTML = 'יומר אוטומטית: <span class="num">≈ ₪' + nf.format(Math.round(amt*rate())) + '</span>';
   } else { hint.textContent = ''; }
 }
 
@@ -742,6 +832,15 @@ document.getElementById('app').addEventListener('click', function(ev){
       scheduleSave(); render();
     }); return;
   }
+  if(a === 'saveRate'){
+    var rIn = document.getElementById('rateIn');
+    var r = parseFloat(rIn.value);
+    if(!(r > 0.5 && r < 10)){ rIn.focus(); return; }
+    state.rate = Math.round(r * 10000) / 10000;
+    scheduleSave(); render();
+    badge('השער עודכן ✓', false);
+    return;
+  }
   if(a === 'openNewCat'){ newCatOpen = true; render(); return; }
   if(a === 'closeNewCat'){ newCatOpen = false; render(); return; }
   if(a === 'addCat'){
@@ -752,7 +851,7 @@ document.getElementById('app').addEventListener('click', function(ev){
     if(!name){ nameEl.focus(); return; }
     if(!(bud >= 0)){ budEl.focus(); return; }
     state.categories.push({
-      id: 'c' + Date.now(), icon:'📌', name: name.slice(0,40), budget: bud, group:'daily', expenses: []
+      id: 'c' + Date.now(), icon:'📌', name: name.slice(0,40), budget: bud, group:'daily', custom:true, expenses: []
     });
     newCatOpen = false;
     scheduleSave(); render(); return;
